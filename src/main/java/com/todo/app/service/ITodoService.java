@@ -13,5 +13,6 @@ public interface ITodoService {
     List<TodoDto> findAll();
     List<TodoDto> findByStatut(String statut);
     List<TodoDto> findByPriorite(String priorite);
+    List<TodoDto> findByTitreContaining(String titre);
     long countByStatut(TodoEntity.Statut statut);
 }

@@ -55,6 +55,11 @@ public class TodoService implements ITodoService {
     }
 
     @Override
+    public List<TodoDto> findByTitreContaining(String titre) {
+        return TodoMapper.toListTodoDto(todoDao.findByTitreContaining(titre));
+    }
+
+    @Override
     public long countByStatut(TodoEntity.Statut statut) {
         return todoDao.findByStatut(statut).size();
     }

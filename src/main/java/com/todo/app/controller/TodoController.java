@@ -7,6 +7,7 @@ import com.todo.app.service.TodoService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 
@@ -35,9 +36,13 @@ public class TodoController {
     @GetMapping("/todos")
     public String listTodos(@RequestParam(value = "statut", required = false) String statut,
                             @RequestParam(value = "priorite", required = false) String priorite,
+                            @RequestParam(value = "q", required = false) String query,
                             Model model) {
         List<TodoDto> todos;
-        if (statut != null && !statut.isEmpty()) {
+        if (query != null && !query.trim().isEmpty()) {
+            todos = todoService.findByTitreContaining(query.trim());
+            model.addAttribute("searchQuery", query.trim());
+        } else if (statut != null && !statut.isEmpty()) {
             todos = todoService.findByStatut(statut);
             model.addAttribute("filterStatut", statut);
         } else if (priorite != null && !priorite.isEmpty()) {
@@ -61,22 +66,59 @@ public class TodoController {
                            @RequestParam(value = "description", required = false) String description,
                            @RequestParam("priorite") String priorite,
                            @RequestParam("statut") String statut,
-                           @RequestParam(value = "dateEcheance", required = false) String dateEcheance) {
+                           @RequestParam(value = "dateEcheance", required = false) String dateEcheance,
+                           RedirectAttributes redirectAttributes) {
+        if (titre == null || titre.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("titreError", "Le titre est obligatoire.");
+            return "redirect:/todos/add";
+        }
+        if (titre.trim().length() < 3 || titre.trim().length() > 100) {
+            redirectAttributes.addFlashAttribute("titreError", "Le titre doit contenir entre 3 et 100 caracteres.");
+            return "redirect:/todos/add";
+        }
+        try {
+            TodoEntity.Priorite.valueOf(priorite);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("enumError", "Priorite invalide.");
+            return "redirect:/todos/add";
+        }
+        try {
+            TodoEntity.Statut.valueOf(statut);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("enumError", "Statut invalide.");
+            return "redirect:/todos/add";
+        }
+        java.time.LocalDate echeance = null;
+        if (dateEcheance != null && !dateEcheance.isEmpty()) {
+            try {
+                echeance = java.time.LocalDate.parse(dateEcheance);
+                if (echeance.isBefore(java.time.LocalDate.now())) {
+                    redirectAttributes.addFlashAttribute("dateError", "La date d'echeance ne peut pas etre dans le passe.");
+                    return "redirect:/todos/add";
+                }
+            } catch (Exception e) {
+                redirectAttributes.addFlashAttribute("dateError", "Format de date invalide.");
+                return "redirect:/todos/add";
+            }
+        }
         TodoDto todo = new TodoDto();
-        todo.setTitre(titre);
+        todo.setTitre(titre.trim());
         todo.setDescription(description);
         todo.setPriorite(priorite);
         todo.setStatut(statut);
-        if (dateEcheance != null && !dateEcheance.isEmpty()) {
-            todo.setDateEcheance(java.time.LocalDate.parse(dateEcheance));
-        }
+        todo.setDateEcheance(echeance);
         todoService.save(todo);
+        redirectAttributes.addFlashAttribute("successMessage", "Tache creee avec succes !");
         return "redirect:/todos";
     }
 
     @GetMapping("/todos/edit/{id}")
-    public String showEditForm(@PathVariable("id") Long id, Model model) {
+    public String showEditForm(@PathVariable("id") Long id, Model model, RedirectAttributes redirectAttributes) {
         TodoDto todo = todoService.findById(id);
+        if (todo == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Tache introuvable.");
+            return "redirect:/todos";
+        }
         model.addAttribute("todo", todo);
         return "edit-todo";
     }
@@ -87,23 +129,50 @@ public class TodoController {
                              @RequestParam(value = "description", required = false) String description,
                              @RequestParam("priorite") String priorite,
                              @RequestParam("statut") String statut,
-                             @RequestParam(value = "dateEcheance", required = false) String dateEcheance) {
+                             @RequestParam(value = "dateEcheance", required = false) String dateEcheance,
+                             RedirectAttributes redirectAttributes) {
+        if (titre == null || titre.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("titreError", "Le titre est obligatoire.");
+            return "redirect:/todos/edit/" + id;
+        }
+        if (titre.trim().length() < 3 || titre.trim().length() > 100) {
+            redirectAttributes.addFlashAttribute("titreError", "Le titre doit contenir entre 3 et 100 caracteres.");
+            return "redirect:/todos/edit/" + id;
+        }
+        java.time.LocalDate echeance = null;
+        if (dateEcheance != null && !dateEcheance.isEmpty()) {
+            try {
+                echeance = java.time.LocalDate.parse(dateEcheance);
+                if (echeance.isBefore(java.time.LocalDate.now())) {
+                    redirectAttributes.addFlashAttribute("dateError", "La date d'echeance ne peut pas etre dans le passe.");
+                    return "redirect:/todos/edit/" + id;
+                }
+            } catch (Exception e) {
+                redirectAttributes.addFlashAttribute("dateError", "Format de date invalide.");
+                return "redirect:/todos/edit/" + id;
+            }
+        }
         TodoDto todo = new TodoDto();
         todo.setId(id);
-        todo.setTitre(titre);
+        todo.setTitre(titre.trim());
         todo.setDescription(description);
         todo.setPriorite(priorite);
         todo.setStatut(statut);
-        if (dateEcheance != null && !dateEcheance.isEmpty()) {
-            todo.setDateEcheance(java.time.LocalDate.parse(dateEcheance));
-        }
+        todo.setDateEcheance(echeance);
         todoService.update(todo);
+        redirectAttributes.addFlashAttribute("successMessage", "Tache mise a jour avec succes !");
         return "redirect:/todos";
     }
 
-    @GetMapping("/todos/delete/{id}")
-    public String deleteTodo(@PathVariable("id") Long id) {
+    @PostMapping("/todos/delete/{id}")
+    public String deleteTodo(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
+        TodoDto todo = todoService.findById(id);
+        if (todo == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Tache introuvable.");
+            return "redirect:/todos";
+        }
         todoService.delete(id);
+        redirectAttributes.addFlashAttribute("successMessage", "Tache supprimee avec succes !");
         return "redirect:/todos";
     }
 }

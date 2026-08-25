@@ -32,4 +32,14 @@ public class TodoDao extends RepositoryImpl<TodoEntity> implements ITodoDao {
             return query.list();
         }
     }
+
+    @Override
+    public List<TodoEntity> findByTitreContaining(String titre) {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Query<TodoEntity> query = session.createQuery(
+                    "FROM TodoEntity t WHERE LOWER(t.titre) LIKE LOWER(:titre) ORDER BY t.dateCreation DESC", TodoEntity.class);
+            query.setParameter("titre", "%" + titre + "%");
+            return query.list();
+        }
+    }
 }

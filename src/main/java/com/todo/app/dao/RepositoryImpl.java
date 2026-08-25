@@ -17,36 +17,47 @@ public class RepositoryImpl<T> implements Repository<T> {
 
     @Override
     public T save(T entity) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
         Transaction transaction = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try {
             transaction = session.beginTransaction();
             session.save(entity);
             transaction.commit();
             return entity;
         } catch (Exception e) {
-            if (transaction != null) transaction.rollback();
+            if (transaction != null && transaction.isActive()) {
+                transaction.rollback();
+            }
             throw e;
+        } finally {
+            session.close();
         }
     }
 
     @Override
     public T update(T entity) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
         Transaction transaction = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try {
             transaction = session.beginTransaction();
             session.merge(entity);
             transaction.commit();
             return entity;
         } catch (Exception e) {
-            if (transaction != null) transaction.rollback();
+            if (transaction != null && transaction.isActive()) {
+                transaction.rollback();
+            }
             throw e;
+        } finally {
+            session.close();
         }
     }
 
     @Override
     public void delete(Long id) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
         Transaction transaction = null;
-        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+        try {
             transaction = session.beginTransaction();
             T entity = session.get(entityClass, id);
             if (entity != null) {
@@ -54,8 +65,12 @@ public class RepositoryImpl<T> implements Repository<T> {
             }
             transaction.commit();
         } catch (Exception e) {
-            if (transaction != null) transaction.rollback();
+            if (transaction != null && transaction.isActive()) {
+                transaction.rollback();
+            }
             throw e;
+        } finally {
+            session.close();
         }
     }
 

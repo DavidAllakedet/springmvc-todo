@@ -35,7 +35,9 @@ public class TodoMapper {
             entity.setStatut(TodoEntity.Statut.valueOf(dto.getStatut()));
         }
         entity.setDateEcheance(dto.getDateEcheance());
-        entity.setDateCreation(dto.getDateCreation());
+        if (dto.getDateCreation() != null) {
+            entity.setDateCreation(dto.getDateCreation());
+        }
         return entity;
     }
 

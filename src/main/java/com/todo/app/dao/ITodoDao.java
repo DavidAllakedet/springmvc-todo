@@ -7,4 +7,5 @@ import java.util.List;
 public interface ITodoDao extends Repository<TodoEntity> {
     List<TodoEntity> findByStatut(TodoEntity.Statut statut);
     List<TodoEntity> findByPriorite(TodoEntity.Priorite priorite);
+    List<TodoEntity> findByTitreContaining(String titre);
 }
